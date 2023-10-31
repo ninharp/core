@@ -11,7 +11,7 @@ from holidays import (
 
 from homeassistant.components.binary_sensor import BinarySensorEntity
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import CONF_NAME
+from homeassistant.const import CONF_LANGUAGE, CONF_NAME
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.device_registry import DeviceEntryType, DeviceInfo
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -63,16 +63,16 @@ async def async_setup_entry(
     province: str | None = entry.options.get(CONF_PROVINCE)
     sensor_name: str = entry.options[CONF_NAME]
     workdays: list[str] = entry.options[CONF_WORKDAYS]
+    language: str | None = entry.options.get(CONF_LANGUAGE)
 
     year: int = (dt_util.now() + timedelta(days=days_offset)).year
 
     if country:
-        cls: HolidayBase = country_holidays(country, subdiv=province, years=year)
         obj_holidays: HolidayBase = country_holidays(
             country,
             subdiv=province,
             years=year,
-            language=cls.default_language,
+            language=language,
         )
     else:
         obj_holidays = HolidayBase()
