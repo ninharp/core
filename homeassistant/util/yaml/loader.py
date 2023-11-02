@@ -202,10 +202,10 @@ def _parse_yaml(
     """Load a YAML file."""
     # If configuration file is empty YAML returns None
     # We convert that to an empty dict
-    return (
-        yaml.load(content, Loader=lambda stream: loader(stream, secrets))  # type: ignore[arg-type]
-        or NodeDictClass()
-    )
+    result = yaml.load(content, Loader=lambda stream: loader(stream, secrets))  # type: ignore[arg-type]
+    if result is None:
+        return NodeDictClass()
+    return result
 
 
 @overload
@@ -240,7 +240,7 @@ def _add_reference(  # type: ignore[no-untyped-def]
     if isinstance(obj, str):
         obj = NodeStrClass(obj)
     setattr(obj, "__config_file__", loader.get_name())
-    setattr(obj, "__line__", node.start_mark.line)
+    setattr(obj, "__line__", node.start_mark.line + 1)
     return obj
 
 
@@ -371,6 +371,16 @@ def _construct_seq(loader: LoaderType, node: yaml.nodes.Node) -> JSON_TYPE:
     return _add_reference(obj, loader, node)
 
 
+def _handle_scalar_tag(
+    loader: LoaderType, node: yaml.nodes.ScalarNode
+) -> str | int | float | None:
+    """Add line number and file name to Load YAML sequence."""
+    obj = loader.construct_scalar(node)
+    if not isinstance(obj, str):
+        return obj
+    return _add_reference(obj, loader, node)
+
+
 def _env_var_yaml(loader: LoaderType, node: yaml.nodes.Node) -> str:
     """Load environment variables and embed it into the configuration YAML."""
     args = node.value.split()
@@ -400,6 +410,7 @@ def add_constructor(tag: Any, constructor: Any) -> None:
 
 add_constructor("!include", _include_yaml)
 add_constructor(yaml.resolver.BaseResolver.DEFAULT_MAPPING_TAG, _handle_mapping_tag)
+add_constructor(yaml.resolver.BaseResolver.DEFAULT_SCALAR_TAG, _handle_scalar_tag)
 add_constructor(yaml.resolver.BaseResolver.DEFAULT_SEQUENCE_TAG, _construct_seq)
 add_constructor("!env_var", _env_var_yaml)
 add_constructor("!secret", secret_yaml)

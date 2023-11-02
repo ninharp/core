@@ -425,9 +425,12 @@ def load_yaml_config_file(
         _LOGGER.error(msg)
         raise HomeAssistantError(msg)
 
-    # Convert values to dictionaries if they are None
+    # Convert values to empty dictionaries if they are None
     for key, value in conf_dict.items():
-        conf_dict[key] = value or {}
+        if value is not None:
+            continue
+        conf_dict[key] = {}
+
     return conf_dict
 
 
@@ -519,8 +522,7 @@ def _format_config_error(
         if "extra keys not allowed" in ex.error_message:
             path = "->".join(str(m) for m in ex.path)
             message += (
-                f"[{ex.path[-1]}] is an invalid option for [{domain}]. "
-                f"Check: {domain}->{path}."
+                f"[{ex.path[-1]}] is an invalid option for [{domain}]. Check: {path}."
             )
         else:
             message += f"{humanize_error(config, ex)}."
@@ -528,14 +530,16 @@ def _format_config_error(
     else:
         message += str(ex) or repr(ex)
 
-    try:
-        domain_config = config.get(domain, config)
-    except AttributeError:
-        domain_config = config
+    domain_reference = config
+    with suppress(AttributeError):
+        for key in config:
+            if key == domain:
+                domain_reference = key
+                break
 
     message += (
-        f" (See {getattr(domain_config, '__config_file__', '?')}, "
-        f"line {getattr(domain_config, '__line__', '?')}). "
+        f" (See {getattr(domain_reference, '__config_file__', '?')}, "
+        f"line {getattr(domain_reference, '__line__', '?')}). "
     )
 
     if domain != CONF_CORE and link:
