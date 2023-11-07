@@ -231,11 +231,13 @@ async def test_async_integration_failing_yaml_config(hass: HomeAssistant) -> Non
     yaml_path = get_fixture_path(f"helpers/{DOMAIN}_configuration.yaml")
     with patch.object(config, "YAML_CONFIG_FILE", yaml_path):
         # Test fetching yaml config does not raise without raise_on_failure option
-        processed_config = await async_integration_yaml_config(hass, DOMAIN)
+        processed_config = await async_integration_yaml_config(
+            hass, DOMAIN, raise_on_failure=False
+        )
         assert processed_config is None
         # Test fetching yaml config does not raise when the raise_on_failure option is set
         with pytest.raises(ServiceValidationError):
-            await async_integration_yaml_config(hass, DOMAIN, raise_on_failure=True)
+            await async_integration_yaml_config(hass, DOMAIN)
 
 
 async def test_async_integration_failing_on_reload(hass: HomeAssistant) -> None:

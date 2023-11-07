@@ -160,7 +160,7 @@ async def async_integration_yaml_config(
 
 
 async def async_integration_yaml_config(
-    hass: HomeAssistant, integration_name: str, *, raise_on_failure: bool = False
+    hass: HomeAssistant, integration_name: str, *, raise_on_failure: bool = True
 ) -> ConfigType | None:
     """Fetch the latest yaml configuration for an integration."""
     integration = await async_get_integration(hass, integration_name)
