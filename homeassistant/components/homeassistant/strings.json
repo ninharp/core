@@ -140,6 +140,9 @@
   "exceptions": {
     "service_not_found": {
       "message": "Service {domain}.{service} not found."
+    },
+    "reload_config_validation_error": {
+      "message": "Reload failed on invalid config for domain {domain} in {config_file} near line {line}. Error: {error}."
     }
   }
 }

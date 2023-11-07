@@ -243,11 +243,11 @@ async def async_check_config_schema(
                 except vol.Invalid as ex:
                     integration = await async_get_integration(hass, DOMAIN)
                     # pylint: disable-next=protected-access
-                    message, _ = conf_util._format_config_error(
+                    message = conf_util._format_config_error(
                         ex, domain, config, integration.documentation
                     )
                     raise ServiceValidationError(
-                        message,
+                        message[0],
                         translation_domain=DOMAIN,
                         translation_key="invalid_platform_config",
                         translation_placeholders={

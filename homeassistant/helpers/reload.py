@@ -9,7 +9,11 @@ from typing import Any, Literal, overload
 from homeassistant import config as conf_util
 from homeassistant.const import SERVICE_RELOAD
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.exceptions import HomeAssistantError
+from homeassistant.exceptions import (
+    ConfigValidationError,
+    HomeAssistantError,
+    ServiceValidationError,
+)
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
 
@@ -160,13 +164,20 @@ async def async_integration_yaml_config(
 ) -> ConfigType | None:
     """Fetch the latest yaml configuration for an integration."""
     integration = await async_get_integration(hass, integration_name)
-
-    return await conf_util.async_process_component_config(
-        hass,
-        await conf_util.async_hass_config_yaml(hass),
-        integration,
-        raise_on_failure=raise_on_failure,
-    )
+    try:
+        return await conf_util.async_process_component_config(
+            hass,
+            await conf_util.async_hass_config_yaml(hass),
+            integration,
+            raise_on_failure=raise_on_failure,
+        )
+    except ConfigValidationError as err:
+        raise ServiceValidationError(
+            str(err),
+            translation_placeholders=err.translation_placeholders,
+            translation_key="reload_config_validation_error",
+            translation_domain="homeassistant",
+        ) from err
 
 
 @callback
