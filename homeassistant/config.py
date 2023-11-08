@@ -872,7 +872,8 @@ async def async_process_component_config(
         return await _async_process_component_config(hass, config, integration)
     try:
         return await _async_process_component_config(hass, config, integration)
-    except HomeAssistantError:
+    except HomeAssistantError as ex:
+        _LOGGER.exception(ex)
         return None
 
 
