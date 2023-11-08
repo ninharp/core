@@ -138,6 +138,9 @@
     }
   },
   "exceptions": {
+    "component_config_error": {
+      "message": "Failed to set up {count, plural, one {platforms} other {platforms}} {platforms} for domain {domain}, check the logs for more information"
+    },
     "service_not_found": {
       "message": "Service {domain}.{service} not found."
     },

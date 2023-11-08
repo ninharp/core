@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 import shutil
 from types import ModuleType
-from typing import Any, Literal, overload
+from typing import TYPE_CHECKING, Any, Literal, overload
 from urllib.parse import urlparse
 
 from awesomeversion import AwesomeVersion
@@ -869,9 +869,9 @@ async def async_process_component_config(
     This method must be run in the event loop.
     """
     if raise_on_failure:
-        return await _async_process_component_config(hass, config, integration)
+        return await _async_process_component_config(hass, config, integration, True)
     try:
-        return await _async_process_component_config(hass, config, integration)
+        return await _async_process_component_config(hass, config, integration, False)
     except HomeAssistantError as ex:
         _LOGGER.exception(ex)
         return None
@@ -881,6 +881,7 @@ async def _async_process_component_config(  # noqa: C901
     hass: HomeAssistant,
     config: ConfigType,
     integration: Integration,
+    raise_on_platform_setup_errors: bool,
 ) -> ConfigType:
     """Check component configuration and return processed configuration.
 
@@ -952,13 +953,17 @@ async def _async_process_component_config(  # noqa: C901
     if component_platform_schema is None:
         return config
 
-    platforms = []
+    platforms: list[ConfigType] = []
+    failed_platforms: set[str] = set()
     for p_name, p_config in config_per_platform(config, domain):
         # Validate component specific platform schema
         try:
             p_validated = component_platform_schema(p_config)
         except vol.Invalid as ex:
             async_log_exception(ex, domain, p_config, hass, integration.documentation)
+            if TYPE_CHECKING:
+                assert p_name is not None
+            failed_platforms.add(p_name)
             continue
         except Exception:  # pylint: disable=broad-except
             _LOGGER.exception(
@@ -969,6 +974,9 @@ async def _async_process_component_config(  # noqa: C901
                 p_name,
                 domain,
             )
+            if TYPE_CHECKING:
+                assert p_name is not None
+            failed_platforms.add(p_name)
             continue
 
         # Not all platform components follow same pattern for platforms
@@ -982,12 +990,14 @@ async def _async_process_component_config(  # noqa: C901
             p_integration = await async_get_integration_with_requirements(hass, p_name)
         except (RequirementsNotFound, IntegrationNotFound) as ex:
             _LOGGER.error("Platform error: %s - %s", domain, ex)
+            failed_platforms.add(p_name)
             continue
 
         try:
             platform = p_integration.get_platform(domain)
         except LOAD_EXCEPTIONS:
             _LOGGER.exception("Platform error: %s", domain)
+            failed_platforms.add(p_name)
             continue
 
         # Validate platform specific schema
@@ -1003,6 +1013,7 @@ async def _async_process_component_config(  # noqa: C901
                     hass,
                     p_integration.documentation,
                 )
+                failed_platforms.add(p_name)
                 continue
             except Exception:  # pylint: disable=broad-except
                 _LOGGER.exception(
@@ -1013,9 +1024,26 @@ async def _async_process_component_config(  # noqa: C901
                     p_name,
                     domain,
                 )
+                failed_platforms.add(p_name)
                 continue
 
         platforms.append(p_validated)
+
+    if raise_on_platform_setup_errors and failed_platforms:
+        platforms_list = list(failed_platforms)
+        platform_count = len(platforms_list)
+        platforms_list_effected = ", ".join(platforms_list)
+        raise HomeAssistantError(
+            f"Failed to set up platform{'' if platform_count==1 else ''} "
+            f"{platforms_list_effected} for domain {domain}, check the logs for more information",
+            translation_domain="homeassistant",
+            translation_key="component_config_error",
+            translation_placeholders={
+                "domain": domain,
+                "platforms": platforms_list_effected,
+                "count": str(platform_count),
+            },
+        )
 
     # Create a copy of the configuration with all config for current
     # component removed and add validated config back in.
