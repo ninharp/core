@@ -412,9 +412,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async def _reload_config(call: ServiceCall) -> None:
             """Reload the platforms."""
             # Fetch updated manually configured items and validate
-            config_yaml = await async_integration_yaml_config(
-                hass, DOMAIN, raise_on_failure=True
-            )
+            config_yaml = await async_integration_yaml_config(hass, DOMAIN)
 
             # Check the schema before continuing reload
             await async_check_config_schema(hass, config_yaml)

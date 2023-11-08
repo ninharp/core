@@ -10,7 +10,7 @@ from pathlib import Path
 import re
 import shutil
 from types import ModuleType
-from typing import Any, overload
+from typing import Any, Literal, overload
 from urllib.parse import urlparse
 
 from awesomeversion import AwesomeVersion
@@ -828,7 +828,9 @@ async def merge_packages_config(
 
 @overload
 async def async_process_component_config(
-    hass: HomeAssistant, config: ConfigType, integration: Integration
+    hass: HomeAssistant,
+    config: ConfigType,
+    integration: Integration,
 ) -> ConfigType:
     ...
 
@@ -839,7 +841,18 @@ async def async_process_component_config(
     config: ConfigType,
     integration: Integration,
     *,
-    raise_on_failure: bool = False,
+    raise_on_failure: Literal[True],
+) -> ConfigType:
+    ...
+
+
+@overload
+async def async_process_component_config(
+    hass: HomeAssistant,
+    config: ConfigType,
+    integration: Integration,
+    *,
+    raise_on_failure: Literal[False] | bool,
 ) -> ConfigType | None:
     ...
 

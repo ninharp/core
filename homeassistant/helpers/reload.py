@@ -67,7 +67,7 @@ async def _resetup_platform(
     integration = await async_get_integration(hass, integration_platform)
 
     conf = await conf_util.async_process_component_config(
-        hass, unprocessed_conf, integration
+        hass, unprocessed_conf, integration, raise_on_failure=False
     )
 
     if not conf:
@@ -144,7 +144,7 @@ async def _async_reconfig_platform(
 
 @overload
 async def async_integration_yaml_config(
-    hass: HomeAssistant, integration_name: str, *, raise_on_failure: Literal[True]
+    hass: HomeAssistant, integration_name: str
 ) -> ConfigType:
     ...
 
@@ -154,7 +154,17 @@ async def async_integration_yaml_config(
     hass: HomeAssistant,
     integration_name: str,
     *,
-    raise_on_failure: Literal[False] = False,
+    raise_on_failure: Literal[True],
+) -> ConfigType:
+    ...
+
+
+@overload
+async def async_integration_yaml_config(
+    hass: HomeAssistant,
+    integration_name: str,
+    *,
+    raise_on_failure: Literal[False],
 ) -> ConfigType | None:
     ...
 
