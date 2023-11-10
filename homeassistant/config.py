@@ -868,10 +868,16 @@ async def async_process_component_config(
 
     This method must be run in the event loop.
     """
-    if raise_on_failure:
+    try:
         config, platform_exceptions = await _async_process_component_config(
             hass, config, integration
         )
+    except HomeAssistantError as ex:
+        if raise_on_failure:
+            raise
+        _LOGGER.exception(ex)
+        return None
+    if raise_on_failure and platform_exceptions:
         platforms_list = list(platform_exceptions)
         platform_count = len(platforms_list)
         platforms_list_effected = ", ".join(platforms_list)
@@ -886,7 +892,6 @@ async def async_process_component_config(
                 "count": str(platform_count),
             },
         )
-    config, _ = await _async_process_component_config(hass, config, integration)
     return config
 
 
