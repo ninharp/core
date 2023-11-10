@@ -937,9 +937,7 @@ async def _async_process_component_config(  # noqa: C901
         config_validator, "async_validate_config"
     ):
         try:
-            return (  # type: ignore[no-any-return]
-                await config_validator.async_validate_config(hass, config)
-            )
+            return (await config_validator.async_validate_config(hass, config)), {}
         except (vol.Invalid, HomeAssistantError) as ex:
             _raise_and_notify(ex, domain, config)
         except Exception as ex:  # pylint: disable=broad-except
@@ -950,7 +948,7 @@ async def _async_process_component_config(  # noqa: C901
     # No custom config validator, proceed with schema validation
     if hasattr(component, "CONFIG_SCHEMA"):
         try:
-            return component.CONFIG_SCHEMA(config)  # type: ignore[no-any-return]
+            return component.CONFIG_SCHEMA(config), {}
         except vol.Invalid as ex:
             _raise_and_notify(ex, domain, config)
         except Exception as ex:  # pylint: disable=broad-except
