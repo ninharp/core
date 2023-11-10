@@ -1,7 +1,7 @@
 """Module to help with parsing and generating configuration files."""
 from __future__ import annotations
 
-from collections import OrderedDict
+from collections import OrderedDict, defaultdict
 from collections.abc import Callable, Sequence
 from contextlib import suppress
 import logging
@@ -869,20 +869,32 @@ async def async_process_component_config(
     This method must be run in the event loop.
     """
     if raise_on_failure:
-        return await _async_process_component_config(hass, config, integration, True)
-    try:
-        return await _async_process_component_config(hass, config, integration, False)
-    except HomeAssistantError as ex:
-        _LOGGER.exception(ex)
-        return None
+        config, platform_exceptions = await _async_process_component_config(
+            hass, config, integration
+        )
+        platforms_list = list(platform_exceptions)
+        platform_count = len(platforms_list)
+        platforms_list_effected = ", ".join(platforms_list)
+        raise HomeAssistantError(
+            f"Failed to set up platform{'' if platform_count==1 else ''} "
+            f"{platforms_list_effected} for domain {integration.domain}, check the logs for more information",
+            translation_domain="homeassistant",
+            translation_key="component_config_error",
+            translation_placeholders={
+                "domain": integration.domain,
+                "platforms": platforms_list_effected,
+                "count": str(platform_count),
+            },
+        )
+    config, _ = await _async_process_component_config(hass, config, integration)
+    return config
 
 
 async def _async_process_component_config(  # noqa: C901
     hass: HomeAssistant,
     config: ConfigType,
     integration: Integration,
-    raise_on_platform_setup_errors: bool,
-) -> ConfigType:
+) -> tuple[ConfigType, dict[str, list[Exception]]]:
     """Check component configuration and return processed configuration.
 
     This method must be run in the event loop.
@@ -951,10 +963,10 @@ async def _async_process_component_config(  # noqa: C901
     )
 
     if component_platform_schema is None:
-        return config
+        return config, {}
 
     platforms: list[ConfigType] = []
-    failed_platforms: set[str] = set()
+    platform_exceptions: dict[str, list[Exception]] = defaultdict(list)
     for p_name, p_config in config_per_platform(config, domain):
         # Validate component specific platform schema
         try:
@@ -963,9 +975,9 @@ async def _async_process_component_config(  # noqa: C901
             async_log_exception(ex, domain, p_config, hass, integration.documentation)
             if TYPE_CHECKING:
                 assert p_name is not None
-            failed_platforms.add(p_name)
+            platform_exceptions[p_name].append(ex)
             continue
-        except Exception:  # pylint: disable=broad-except
+        except Exception as ex:  # pylint: disable=broad-except
             _LOGGER.exception(
                 (
                     "Unknown error validating %s platform config with %s component"
@@ -976,7 +988,7 @@ async def _async_process_component_config(  # noqa: C901
             )
             if TYPE_CHECKING:
                 assert p_name is not None
-            failed_platforms.add(p_name)
+            platform_exceptions[p_name].append(ex)
             continue
 
         # Not all platform components follow same pattern for platforms
@@ -990,14 +1002,14 @@ async def _async_process_component_config(  # noqa: C901
             p_integration = await async_get_integration_with_requirements(hass, p_name)
         except (RequirementsNotFound, IntegrationNotFound) as ex:
             _LOGGER.error("Platform error: %s - %s", domain, ex)
-            failed_platforms.add(p_name)
+            platform_exceptions[p_name].append(ex)
             continue
 
         try:
             platform = p_integration.get_platform(domain)
-        except LOAD_EXCEPTIONS:
+        except LOAD_EXCEPTIONS as ex:
             _LOGGER.exception("Platform error: %s", domain)
-            failed_platforms.add(p_name)
+            platform_exceptions[p_name].append(ex)
             continue
 
         # Validate platform specific schema
@@ -1013,9 +1025,9 @@ async def _async_process_component_config(  # noqa: C901
                     hass,
                     p_integration.documentation,
                 )
-                failed_platforms.add(p_name)
+                platform_exceptions[p_name].append(ex)
                 continue
-            except Exception:  # pylint: disable=broad-except
+            except Exception as ex:  # pylint: disable=broad-except
                 _LOGGER.exception(
                     (
                         "Unknown error validating config for %s platform for %s"
@@ -1024,33 +1036,17 @@ async def _async_process_component_config(  # noqa: C901
                     p_name,
                     domain,
                 )
-                failed_platforms.add(p_name)
+                platform_exceptions[p_name].append(ex)
                 continue
 
         platforms.append(p_validated)
-
-    if raise_on_platform_setup_errors and failed_platforms:
-        platforms_list = list(failed_platforms)
-        platform_count = len(platforms_list)
-        platforms_list_effected = ", ".join(platforms_list)
-        raise HomeAssistantError(
-            f"Failed to set up platform{'' if platform_count==1 else ''} "
-            f"{platforms_list_effected} for domain {domain}, check the logs for more information",
-            translation_domain="homeassistant",
-            translation_key="component_config_error",
-            translation_placeholders={
-                "domain": domain,
-                "platforms": platforms_list_effected,
-                "count": str(platform_count),
-            },
-        )
 
     # Create a copy of the configuration with all config for current
     # component removed and add validated config back in.
     config = config_without_domain(config, domain)
     config[domain] = platforms
 
-    return config
+    return config, platform_exceptions
 
 
 @callback

@@ -1156,17 +1156,18 @@ async def test_component_config_exceptions(
             )
         ),
     )
-    assert (
+    with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass, {}, integration=test_integration, raise_on_failure=False
         )
-        is None
-    )
+        assert str(ex.value) == "Unknown error calling test_domain config validator"
+    assert "Unknown error calling test_domain config validator" in str(ex.value)
+    caplog.clear()
     with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass, {}, integration=test_integration
         )
-    assert str(ex.value) == "Unknown error calling test_domain config validator"
+    assert "Unknown error calling test_domain config validator" in str(ex.value)
 
     test_integration = Mock(
         domain="test_domain",
@@ -1179,12 +1180,11 @@ async def test_component_config_exceptions(
         ),
         get_component=Mock(return_value=Mock(spec=["PLATFORM_SCHEMA_BASE"])),
     )
-    assert (
+    with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass, {}, integration=test_integration, raise_on_failure=False
         )
-        is None
-    )
+    assert "Invalid config for [test_domain]: broken (See ?, line ?)" in str(ex.value)
     with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass, {}, integration=test_integration
@@ -1199,15 +1199,14 @@ async def test_component_config_exceptions(
             return_value=Mock(CONFIG_SCHEMA=Mock(side_effect=ValueError("broken")))
         ),
     )
-    assert (
+    with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass,
             {},
             integration=test_integration,
             raise_on_failure=False,
         )
-        is None
-    )
+    assert "Unknown error calling test_domain CONFIG_SCHEMA" in str(ex.value)
     with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass,
@@ -1325,6 +1324,11 @@ async def test_component_config_exceptions(
             integration=test_integration,
             raise_on_failure=False,
         ) == {"test_domain": []}
+        assert (
+            "ImportError: ModuleNotFoundError: No module named 'not_installed_something'"
+            in caplog.text
+        )
+        caplog.clear()
         with pytest.raises(HomeAssistantError) as ex:
             assert await config_util.async_process_component_config(
                 hass,
@@ -1353,14 +1357,16 @@ async def test_component_config_exceptions(
             )
         ),
     )
-    assert (
+    with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass,
             {"test_domain": {}},
             integration=test_integration,
             raise_on_failure=False,
         )
-        is None
+    assert (
+        "Error importing config platform test_domain: ModuleNotFoundError: No module named 'not_installed_something'"
+        in str(ex.value)
     )
     with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
@@ -1370,8 +1376,8 @@ async def test_component_config_exceptions(
             raise_on_failure=True,
         )
     assert (
-        "Error importing config platform test_domain: ModuleNotFoundError: "
-        "No module named 'not_installed_something'" in str(ex.value)
+        "Error importing config platform test_domain: ModuleNotFoundError: No module named 'not_installed_something'"
+        in str(ex.value)
     )
 
     # get_component raising
@@ -1383,15 +1389,14 @@ async def test_component_config_exceptions(
             side_effect=FileNotFoundError("No such file or directory: b'liblibc.a'")
         ),
     )
-    assert (
+    with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass,
             {"test_domain": {}},
             integration=test_integration,
             raise_on_failure=False,
         )
-        is None
-    )
+    assert "Unable to import test_domain: No such file or directory" in str(ex.value)
     with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
             hass,
