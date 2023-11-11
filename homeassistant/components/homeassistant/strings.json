@@ -139,7 +139,10 @@
   },
   "exceptions": {
     "component_config_error": {
-      "message": "Failed to set up {count, plural, one {platforms} other {platforms}} {platforms} for domain {domain}, check the logs for more information"
+      "message": "Failed to set up {count, plural, one {platforms} other {platforms}} {platforms} for domain {domain}, check the logs for more information."
+    },
+    "integration_config_error": {
+      "message": "Failed to process component config for integration {domain}, check the logs for more information."
     },
     "service_not_found": {
       "message": "Service {domain}.{service} not found."

@@ -8,7 +8,7 @@ import voluptuous as vol
 from homeassistant import config
 from homeassistant.const import SERVICE_RELOAD
 from homeassistant.core import HomeAssistant
-from homeassistant.exceptions import HomeAssistantError, ServiceValidationError
+from homeassistant.exceptions import ConfigValidationError, HomeAssistantError
 from homeassistant.helpers.entity_component import EntityComponent
 from homeassistant.helpers.entity_platform import async_get_platforms
 from homeassistant.helpers.reload import (
@@ -236,7 +236,7 @@ async def test_async_integration_failing_yaml_config(hass: HomeAssistant) -> Non
         )
         assert processed_config is None
         # Test fetching yaml config does not raise when the raise_on_failure option is set
-        with pytest.raises(ServiceValidationError):
+        with pytest.raises(ConfigValidationError):
             await async_integration_yaml_config(hass, DOMAIN)
 
 

@@ -868,22 +868,43 @@ async def async_process_component_config(
 
     This method must be run in the event loop.
     """
-    try:
-        config, platform_exceptions = await _async_process_component_config(
-            hass, config, integration
+
+    def _raise_and_notify(ex: Exception, domain: str, config: ConfigType) -> None:
+        """Notify and optionally raise an exception for an invalid config."""
+        async_notify_setup_error(hass, domain, None)
+        message, _, config_file, line = _format_config_error(
+            ex, domain, config, integration.documentation
         )
-    except HomeAssistantError as ex:
+        placeholders = {
+            "domain": domain,
+            "error": str(ex),
+            "config_file": config_file,
+            "line": line,
+        }
         if raise_on_failure:
-            raise
-        _LOGGER.exception(ex)
+            raise ConfigValidationError(
+                message,
+                translation_domain="homeassistant",
+                translation_key="reload_config_validation_error",
+                translation_placeholders=placeholders,
+            ) from ex
+        _LOGGER.error(message)
+
+    parsed_config, platform_exceptions = await _async_process_component_config(
+        hass, config, integration
+    )
+    if (domain := integration.domain) in platform_exceptions:
+        _raise_and_notify(platform_exceptions[domain][0], domain, config)
         return None
-    if raise_on_failure and platform_exceptions:
+    if not raise_on_failure:
+        return parsed_config
+    if platform_exceptions:
         platforms_list = list(platform_exceptions)
         platform_count = len(platforms_list)
         platforms_list_effected = ", ".join(platforms_list)
-        raise HomeAssistantError(
-            f"Failed to set up platform{'' if platform_count==1 else ''} "
-            f"{platforms_list_effected} for domain {integration.domain}, check the logs for more information",
+        raise ConfigValidationError(
+            f"Failed to set up platform{'' if platform_count==1 else 's'} "
+            f"{platforms_list_effected} for domain {integration.domain}, check the logs for more information.",
             translation_domain="homeassistant",
             translation_key="component_config_error",
             translation_placeholders={
@@ -892,38 +913,35 @@ async def async_process_component_config(
                 "count": str(platform_count),
             },
         )
-    return config
+    if parsed_config is None:
+        raise HomeAssistantError(
+            f"Failed to process component config for integration {integration.domain}"
+            ", check the logs for more information.",
+            translation_domain="homeassistant",
+            translation_key="integration_config_error",
+            translation_placeholders={"domain": integration.domain},
+        )
+    return parsed_config
 
 
 async def _async_process_component_config(  # noqa: C901
     hass: HomeAssistant,
     config: ConfigType,
     integration: Integration,
-) -> tuple[ConfigType, dict[str, list[Exception]]]:
+) -> tuple[ConfigType | None, dict[str, list[Exception]]]:
     """Check component configuration and return processed configuration.
 
     This method must be run in the event loop.
     """
     domain = integration.domain
-
-    def _raise_and_notify(ex: Exception, domain: str, config: ConfigType) -> None:
-        """Notify and raise an exception for a failing config."""
-        async_notify_setup_error(hass, domain, None)
-        message, _, config_file, line = _format_config_error(ex, domain, config, None)
-        placeholders = {
-            "domain": domain,
-            "error": str(ex),
-            "config_file": config_file,
-            "line": line,
-        }
-        raise ConfigValidationError(
-            message, translation_placeholders=placeholders
-        ) from ex
+    platform_exceptions: dict[str, list[Exception]] = defaultdict(list)
 
     try:
         component = integration.get_component()
     except LOAD_EXCEPTIONS as ex:
-        raise HomeAssistantError(f"Unable to import {domain}: {ex}") from ex
+        _LOGGER.error("Unable to import %s: %s", domain, ex)
+        platform_exceptions[domain].append(ex)
+        return None, {}
 
     # Check if the integration has a custom config validator
     config_validator = None
@@ -934,9 +952,8 @@ async def _async_process_component_config(  # noqa: C901
         # If the config platform contains bad imports, make sure
         # that still fails.
         if err.name != f"{integration.pkg_path}.config":
-            raise HomeAssistantError(
-                f"Error importing config platform {domain}: {err}"
-            ) from err
+            _LOGGER.error("Error importing config platform %s: %s", domain, err)
+            return None, {}
 
     if config_validator is not None and hasattr(
         config_validator, "async_validate_config"
@@ -944,22 +961,25 @@ async def _async_process_component_config(  # noqa: C901
         try:
             return (await config_validator.async_validate_config(hass, config)), {}
         except (vol.Invalid, HomeAssistantError) as ex:
-            _raise_and_notify(ex, domain, config)
-        except Exception as ex:  # pylint: disable=broad-except
-            raise HomeAssistantError(
-                f"Unknown error calling {domain} config validator"
-            ) from ex
+            platform_exceptions[domain].append(ex)
+            return None, platform_exceptions
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unknown error calling %s config validator", domain)
+            return None, {}
 
     # No custom config validator, proceed with schema validation
     if hasattr(component, "CONFIG_SCHEMA"):
         try:
             return component.CONFIG_SCHEMA(config), {}
         except vol.Invalid as ex:
-            _raise_and_notify(ex, domain, config)
-        except Exception as ex:  # pylint: disable=broad-except
-            raise HomeAssistantError(
-                f"Unknown error calling {domain} CONFIG_SCHEMA"
-            ) from ex
+            platform_exceptions[domain].append(ex)
+            return None, platform_exceptions
+        except Exception:  # pylint: disable=broad-except
+            _LOGGER.exception("Unknown error calling %s CONFIG_SCHEMA", domain)
+            return None, {}
+
+    if domain in platform_exceptions:
+        return None, platform_exceptions
 
     component_platform_schema = getattr(
         component, "PLATFORM_SCHEMA_BASE", getattr(component, "PLATFORM_SCHEMA", None)
@@ -969,7 +989,6 @@ async def _async_process_component_config(  # noqa: C901
         return config, {}
 
     platforms: list[ConfigType] = []
-    platform_exceptions: dict[str, list[Exception]] = defaultdict(list)
     for p_name, p_config in config_per_platform(config, domain):
         # Validate component specific platform schema
         try:

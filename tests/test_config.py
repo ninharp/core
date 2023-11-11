@@ -1169,7 +1169,12 @@ async def test_component_config_exceptions(
         await config_util.async_process_component_config(
             hass, {}, integration=test_integration
         )
-    assert "Unknown error calling test_domain config validator" in str(ex.value)
+    assert "ValueError: broken" in caplog.text
+    assert "Unknown error calling test_domain config validator" in caplog.text
+    assert (
+        "Failed to process component config for integration test_domain, check the logs for more information."
+        in str(ex.value)
+    )
 
     test_integration = Mock(
         domain="test_domain",
@@ -1222,7 +1227,11 @@ async def test_component_config_exceptions(
             integration=test_integration,
             raise_on_failure=True,
         )
-    assert "Unknown error calling test_domain CONFIG_SCHEMA" in str(ex.value)
+    assert "Unknown error calling test_domain CONFIG_SCHEMA" in caplog.text
+    assert (
+        "Failed to process component config for integration test_domain, check the logs for more information."
+        in str(ex.value)
+    )
 
     # component.PLATFORM_SCHEMA
     test_integration = Mock(
@@ -1387,6 +1396,10 @@ async def test_component_config_exceptions(
         )
     assert (
         "Error importing config platform test_domain: ModuleNotFoundError: No module named 'not_installed_something'"
+        in caplog.text
+    )
+    assert (
+        "Failed to process component config for integration test_domain, check the logs for more information."
         in str(ex.value)
     )
 
@@ -1416,7 +1429,11 @@ async def test_component_config_exceptions(
             integration=test_integration,
             raise_on_failure=True,
         )
-    assert "Unable to import test_domain: No such file or directory" in str(ex.value)
+    assert "Unable to import test_domain: No such file or directory" in caplog.text
+    assert (
+        "Failed to process component config for integration test_domain, check the logs for more information."
+        in str(ex.value)
+    )
 
 
 @pytest.mark.parametrize(

@@ -24,7 +24,12 @@ from homeassistant.const import (
     SERVICE_RELOAD,
 )
 from homeassistant.core import HassJob, HomeAssistant, ServiceCall, callback
-from homeassistant.exceptions import ServiceValidationError, TemplateError, Unauthorized
+from homeassistant.exceptions import (
+    ConfigValidationError,
+    ServiceValidationError,
+    TemplateError,
+    Unauthorized,
+)
 from homeassistant.helpers import config_validation as cv, event as ev, template
 from homeassistant.helpers.device_registry import DeviceEntry
 from homeassistant.helpers.dispatcher import async_dispatcher_connect
@@ -412,7 +417,15 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
         async def _reload_config(call: ServiceCall) -> None:
             """Reload the platforms."""
             # Fetch updated manually configured items and validate
-            config_yaml = await async_integration_yaml_config(hass, DOMAIN)
+            try:
+                config_yaml = await async_integration_yaml_config(hass, DOMAIN)
+            except ConfigValidationError as ex:
+                raise ServiceValidationError(
+                    str(ex),
+                    translation_domain=ex.translation_domain,
+                    translation_key=ex.translation_key,
+                    translation_placeholders=ex.translation_placeholders,
+                ) from ex
 
             # Check the schema before continuing reload
             await async_check_config_schema(hass, config_yaml)

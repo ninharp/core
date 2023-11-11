@@ -174,20 +174,12 @@ async def async_integration_yaml_config(
 ) -> ConfigType | None:
     """Fetch the latest yaml configuration for an integration."""
     integration = await async_get_integration(hass, integration_name)
-    try:
-        return await conf_util.async_process_component_config(
-            hass,
-            await conf_util.async_hass_config_yaml(hass),
-            integration,
-            raise_on_failure=raise_on_failure,
-        )
-    except ConfigValidationError as err:
-        raise ServiceValidationError(
-            str(err),
-            translation_placeholders=err.translation_placeholders,
-            translation_key="reload_config_validation_error",
-            translation_domain="homeassistant",
-        ) from err
+    return await conf_util.async_process_component_config(
+        hass,
+        await conf_util.async_hass_config_yaml(hass),
+        integration,
+        raise_on_failure=raise_on_failure,
+    )
 
 
 @callback
@@ -214,7 +206,16 @@ async def async_setup_reload_service(
 
     async def _reload_config(call: ServiceCall) -> None:
         """Reload the platforms."""
-        await async_reload_integration_platforms(hass, domain, platforms)
+        try:
+            await async_reload_integration_platforms(hass, domain, platforms)
+        except ConfigValidationError as ex:
+            raise ServiceValidationError(
+                str(ex),
+                translation_domain=ex.translation_domain,
+                translation_key=ex.translation_key,
+                translation_placeholders=ex.translation_placeholders,
+            ) from ex
+
         hass.bus.async_fire(f"event_{domain}_reloaded", context=call.context)
 
     async_register_admin_service(hass, domain, SERVICE_RELOAD, _reload_config)
