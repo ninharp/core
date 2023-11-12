@@ -984,9 +984,6 @@ async def _async_process_component_config(  # noqa: C901
             _LOGGER.exception("Unknown error calling %s CONFIG_SCHEMA", domain)
             return None, {}
 
-    if domain in platform_exceptions:
-        return None, platform_exceptions
-
     component_platform_schema = getattr(
         component, "PLATFORM_SCHEMA_BASE", getattr(component, "PLATFORM_SCHEMA", None)
     )

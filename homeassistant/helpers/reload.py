@@ -9,11 +9,7 @@ from typing import Any, Literal, overload
 from homeassistant import config as conf_util
 from homeassistant.const import SERVICE_RELOAD
 from homeassistant.core import HomeAssistant, ServiceCall, callback
-from homeassistant.exceptions import (
-    ConfigValidationError,
-    HomeAssistantError,
-    ServiceValidationError,
-)
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.loader import async_get_integration
 from homeassistant.setup import async_setup_component
 
@@ -206,16 +202,7 @@ async def async_setup_reload_service(
 
     async def _reload_config(call: ServiceCall) -> None:
         """Reload the platforms."""
-        try:
-            await async_reload_integration_platforms(hass, domain, platforms)
-        except ConfigValidationError as ex:
-            raise ServiceValidationError(
-                str(ex),
-                translation_domain=ex.translation_domain,
-                translation_key=ex.translation_key,
-                translation_placeholders=ex.translation_placeholders,
-            ) from ex
-
+        await async_reload_integration_platforms(hass, domain, platforms)
         hass.bus.async_fire(f"event_{domain}_reloaded", context=call.context)
 
     async_register_admin_service(hass, domain, SERVICE_RELOAD, _reload_config)
