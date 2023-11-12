@@ -869,17 +869,23 @@ async def async_process_component_config(
     This method must be run in the event loop.
     """
 
-    def _raise_and_notify(ex: Exception, domain: str, config: ConfigType) -> None:
+    def _raise_and_notify(
+        platform_exceptions: list[Exception], domain: str, config: ConfigType
+    ) -> None:
         """Notify and optionally raise an exception for an invalid config."""
-        async_notify_setup_error(hass, domain, None)
+        link = integration.documentation
+        async_notify_setup_error(hass, domain, link)
+        ex = platform_exceptions[0]
         message, _, config_file, line = _format_config_error(
             ex, domain, config, integration.documentation
         )
+
         placeholders = {
             "domain": domain,
             "error": str(ex),
             "config_file": config_file,
             "line": line,
+            "errors": str(len(platform_exceptions)),
         }
         if raise_on_failure:
             raise ConfigValidationError(
@@ -894,7 +900,7 @@ async def async_process_component_config(
         hass, config, integration
     )
     if (domain := integration.domain) in platform_exceptions:
-        _raise_and_notify(platform_exceptions[domain][0], domain, config)
+        _raise_and_notify(platform_exceptions[domain], domain, config)
         return None
     if not raise_on_failure:
         return parsed_config

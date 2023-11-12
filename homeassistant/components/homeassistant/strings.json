@@ -139,7 +139,7 @@
   },
   "exceptions": {
     "component_config_error": {
-      "message": "Failed to set up {count, plural, one {platforms} other {platforms}} {platforms} for domain {domain}, check the logs for more information."
+      "message": "Failed to set up {count, plural, one {platforms} other {platforms}} {platforms} for domain {domain}. Check the logs for more information."
     },
     "integration_config_error": {
       "message": "Failed to process component config for integration {domain}, check the logs for more information."
@@ -148,7 +148,7 @@
       "message": "Service {domain}.{service} not found."
     },
     "reload_config_validation_error": {
-      "message": "Reload failed on invalid config for domain {domain} in {config_file} near line {line}. Error: {error}."
+      "message": "Reload failed on invalid config for domain {domain} in {config_file} near line {line}. {errors, plural, one {Error} other {First error}}: {error}. Check the logs for more information."
     }
   }
 }
