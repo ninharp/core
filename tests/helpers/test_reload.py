@@ -222,7 +222,7 @@ async def test_async_integration_failing_yaml_config(hass: HomeAssistant) -> Non
     """Test reloading yaml config for an integration fails.
 
     In case an integration reloads its yaml configuration it should throw when
-    the new config failed to load.
+    the new config failed to load and raise_on_failure is set to True.
     """
     schema_without_name_attr = vol.Schema({vol.Required("some_option"): str})
 
@@ -231,20 +231,18 @@ async def test_async_integration_failing_yaml_config(hass: HomeAssistant) -> Non
     yaml_path = get_fixture_path(f"helpers/{DOMAIN}_configuration.yaml")
     with patch.object(config, "YAML_CONFIG_FILE", yaml_path):
         # Test fetching yaml config does not raise without raise_on_failure option
-        processed_config = await async_integration_yaml_config(
-            hass, DOMAIN, raise_on_failure=False
-        )
+        processed_config = await async_integration_yaml_config(hass, DOMAIN)
         assert processed_config is None
         # Test fetching yaml config does not raise when the raise_on_failure option is set
         with pytest.raises(ConfigValidationError):
-            await async_integration_yaml_config(hass, DOMAIN)
+            await async_integration_yaml_config(hass, DOMAIN, raise_on_failure=True)
 
 
 async def test_async_integration_failing_on_reload(hass: HomeAssistant) -> None:
-    """Test reloading yaml config for an integration fails with other exception.
+    """Test reloading yaml config for an integration fails with an other exception.
 
     In case an integration reloads its yaml configuration it should throw when
-    the new config failed to load.
+    the new config failed to load and raise_on_failure is set to True.
     """
     mock_integration(hass, MockModule(DOMAIN))
 

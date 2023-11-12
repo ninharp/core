@@ -145,7 +145,7 @@ async def _async_reconfig_platform(
 @overload
 async def async_integration_yaml_config(
     hass: HomeAssistant, integration_name: str
-) -> ConfigType:
+) -> ConfigType | None:
     ...
 
 
@@ -164,13 +164,13 @@ async def async_integration_yaml_config(
     hass: HomeAssistant,
     integration_name: str,
     *,
-    raise_on_failure: Literal[False],
+    raise_on_failure: Literal[False] | bool,
 ) -> ConfigType | None:
     ...
 
 
 async def async_integration_yaml_config(
-    hass: HomeAssistant, integration_name: str, *, raise_on_failure: bool = True
+    hass: HomeAssistant, integration_name: str, *, raise_on_failure: bool = False
 ) -> ConfigType | None:
     """Fetch the latest yaml configuration for an integration."""
     integration = await async_get_integration(hass, integration_name)
