@@ -218,7 +218,7 @@ async def _async_setup_component(
         return False
 
     processed_config = await conf_util.async_process_component_config(
-        hass, config, integration, raise_on_failure=False
+        hass, config, integration
     )
 
     if processed_config is None:

@@ -38,6 +38,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
             hass, unprocessed_conf, await async_get_integration(hass, DOMAIN)
         )
 
+        if conf is None:
+            return
+
         await async_reload_integration_platforms(hass, DOMAIN, PLATFORMS)
 
         if DOMAIN in conf:

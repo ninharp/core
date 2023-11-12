@@ -87,6 +87,9 @@ async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
 
         config = await async_process_component_config(hass, conf, integration)
 
+        if config is None:
+            raise HomeAssistantError("Config validation failed")
+
         resource_collection = await create_yaml_resource_col(
             hass, config[DOMAIN].get(CONF_RESOURCES)
         )

@@ -418,7 +418,9 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
             """Reload the platforms."""
             # Fetch updated manually configured items and validate
             try:
-                config_yaml = await async_integration_yaml_config(hass, DOMAIN)
+                config_yaml = await async_integration_yaml_config(
+                    hass, DOMAIN, raise_on_failure=True
+                )
             except ConfigValidationError as ex:
                 raise ServiceValidationError(
                     str(ex),

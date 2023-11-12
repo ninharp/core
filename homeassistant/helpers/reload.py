@@ -67,7 +67,7 @@ async def _resetup_platform(
     integration = await async_get_integration(hass, integration_platform)
 
     conf = await conf_util.async_process_component_config(
-        hass, unprocessed_conf, integration, raise_on_failure=False
+        hass, unprocessed_conf, integration
     )
 
     if not conf:

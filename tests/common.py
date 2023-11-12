@@ -978,7 +978,7 @@ def assert_setup_component(count, domain=None):
     """
     config = {}
 
-    async def mock_psc(hass, config_input, integration, raise_on_failure=True):
+    async def mock_psc(hass, config_input, integration, raise_on_failure=False):
         """Mock the prepare_setup_component to capture config."""
         domain_input = integration.domain
         res = await async_process_component_config(

@@ -831,7 +831,7 @@ async def async_process_component_config(
     hass: HomeAssistant,
     config: ConfigType,
     integration: Integration,
-) -> ConfigType:
+) -> ConfigType | None:
     ...
 
 
@@ -862,7 +862,7 @@ async def async_process_component_config(
     config: ConfigType,
     integration: Integration,
     *,
-    raise_on_failure: bool = True,
+    raise_on_failure: bool = False,
 ) -> ConfigType | None:
     """Check component configuration and return processed configuration.
 

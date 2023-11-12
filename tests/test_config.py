@@ -1158,7 +1158,7 @@ async def test_component_config_exceptions(
     )
     assert (
         await config_util.async_process_component_config(
-            hass, {}, integration=test_integration, raise_on_failure=False
+            hass, {}, integration=test_integration
         )
         is None
     )
@@ -1167,7 +1167,7 @@ async def test_component_config_exceptions(
     caplog.clear()
     with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
-            hass, {}, integration=test_integration
+            hass, {}, integration=test_integration, raise_on_failure=True
         )
     assert "ValueError: broken" in caplog.text
     assert "Unknown error calling test_domain config validator" in caplog.text
@@ -1197,7 +1197,7 @@ async def test_component_config_exceptions(
     assert "Invalid config for [test_domain]: broken (See ?, line ?)" in caplog.text
     with pytest.raises(HomeAssistantError) as ex:
         await config_util.async_process_component_config(
-            hass, {}, integration=test_integration
+            hass, {}, integration=test_integration, raise_on_failure=True
         )
     assert "Invalid config for [test_domain]: broken (See ?, line ?)" in str(ex.value)
 
